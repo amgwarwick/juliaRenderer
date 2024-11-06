@@ -13,7 +13,7 @@ using Colors
 using ProgressMeter
 using Profile
 
-include("rendererStructureFastgc.jl")
+include("rendererStructureGC.jl")
 
 n_envs = 16
 model_path = "rodent_with_floor.xml"
