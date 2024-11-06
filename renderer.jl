@@ -1,34 +1,17 @@
+module Renderer
+using StaticArrays
+using GLAbstraction
+using ModernGL
 using MuJoCo
-using Libdl
-using Base.Libc: Ptr
 using LinearAlgebra
-using GLM
-using ModernGL, GLAbstraction
-using FileIO
-import Images
-using ColorTypes
-using LinearAlgebra
-using GeometryTypes
-using Colors
-using ProgressMeter
-using Profile
-
-include("rendererStructureFast.jl")
-
-n_envs = 16
-model_path = "rodent_with_floor.xml"
-model = MuJoCo.load_model(model_path)
-
-datas = [MuJoCo.init_data(model) for _ = 1:n_envs]
-for data in datas
-    MuJoCo.step!(model, data)
-end
-batchRenderer = BatchRenderer(model, res=64, n_envs=n_envs)
-
-function benchMark(batchRenderer, datas)
-    for t = 1:32
-        images = render(batchRenderer, datas)
-    end
+using Images
+import DataStructures: DefaultDict
+include("basic_geoms.jl")
+include("opengl_utils.jl")
+include("geom_renderer.jl")
+include("extract_data.jl")
+include("batch_renderer.jl")
+export BatchRenderer, render
 end
 
-@time benchMark(batchRenderer, datas)
+
