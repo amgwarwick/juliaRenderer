@@ -1,21 +1,5 @@
-using MuJoCo
-using Libdl
-using Base.Libc: Ptr
-using LinearAlgebra
-using GLM
-using ModernGL, GLAbstraction
-using FileIO
-using Images
-using ColorTypes
-using LinearAlgebra
-using GeometryTypes
-using Colors
-include("basic_geoms.jl")
-include("extract_data.jl")
-include("opengl_utils.jl")
-include("geom_renderer.jl")
-
 struct BatchRenderer
+    model::MuJoCo.Model
     res::Int32
     n_envs::Int32
 
@@ -95,13 +79,13 @@ function BatchRenderer(model; res, n_envs)
                         "specular", "cutoff", "exponent", "directional", "attenuation",
                         "viewPos", "headlightDir", "view", "n_env", "res"]
     shader_locations = Dict(v => glGetUniformLocation(shader_program, v) for v in shader_variables)
-    return BatchRenderer(res, n_envs, egl_ctx_success, projection_matrix, light_model, n_geoms_by_type, renderers, shader_program,
+    return BatchRenderer(model, res, n_envs, egl_ctx_success, projection_matrix, light_model, n_geoms_by_type, renderers, shader_program,
                          shader_locations)
 end
 
 function render(batchRenderer, datas)
 
-    instance_data_boxes, instance_data_spheres, instance_data_planes,  instance_data_capsules = extract_geom_data(model, datas, batchRenderer.n_envs, batchRenderer.n_geoms_by_type)
+    instance_data_boxes, instance_data_spheres, instance_data_planes,  instance_data_capsules = extract_geom_data(batchRenderer.model, datas, batchRenderer.n_envs, batchRenderer.n_geoms_by_type)
 
     camera_data_pos, camera_data_mat = extract_camera_data(datas[1]) #will change
     camera_data_pos = Float32.(camera_data_pos)
