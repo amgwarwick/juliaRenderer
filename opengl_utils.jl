@@ -1,40 +1,32 @@
-# Load the shared library
 const LIBEGL = "./libegl_example.so"
-
 function setup_egl(width::Cint, height::Cint)
     # `setup_egl` now takes two integer arguments: width and height
-    return ccall((:setup_egl, LIBEGL), Cint, (Cint, Cint), width, height)
+    egl_status = ccall((:setup_egl, LIBEGL), Cint, (Cint, Cint), width, height)
+    if egl_status != 0
+        error("Failed to initialize EGL. Return code: $egl_status.")
+    end
+    return egl_status
+end
+
+function compile_shader(source_file, shader_type)
+    shader_source = open(read, source_file, "r") |> Vector{UInt8}
+    shader = glCreateShader(shader_type)
+	glShaderSource(shader, 1, Ptr{UInt8}[pointer(shader_source)], Ref{GLint}(length(shader_source)))  # nicer thanks to GLAbstraction
+	glCompileShader(shader)
+	# Check that it compiled correctly
+	status = Ref(GLint(0))
+	glGetShaderiv(shader, GL_COMPILE_STATUS, status)
+	if status[] != GL_TRUE
+		buffer = zeros(UInt8, 512)
+		glGetShaderInfoLog(shader, 512, C_NULL, buffer)
+		error("$(unsafe_string(pointer(buffer), 512))")
+	end
+    return shader
 end
 
 function compile_shaders()
-    vertex_source = open(read, "vertex.glsl", "r") |> Vector{UInt8}
-    fragment_source = open(read, "fragment.glsl", "r") |> Vector{UInt8}
-
-	# Compile the vertex shader
-	vertex_shader = glCreateShader(GL_VERTEX_SHADER)
-	glShaderSource(vertex_shader, 1, Ptr{UInt8}[pointer(vertex_source)], Ref{GLint}(length(vertex_source)))  # nicer thanks to GLAbstraction
-	glCompileShader(vertex_shader)
-	# Check that it compiled correctly
-	status = Ref(GLint(0))
-	glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, status)
-	if status[] != GL_TRUE
-		buffer = Array(UInt8, 512)
-		glGetShaderInfoLog(vertex_shader, 512, C_NULL, buffer)
-		@error "$(unsafe_string(pointer(buffer), 512))"
-	end
-
-	# Compile the fragment shader
-	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER)
-	glShaderSource(fragment_shader, 1, Ptr{UInt8}[pointer(fragment_source)], Ref{GLint}(length(fragment_source)))  # nicer thanks to GLAbstraction
-	glCompileShader(fragment_shader)
-	# Check that it compiled correctly
-	status = Ref(GLint(0))
-	glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, status)
-	if status[] != GL_TRUE
-		buffer = Array(UInt8, 512)
-		glGetShaderInfoLog(fragment_shader, 512, C_NULL, buffer)
-		@error "$(unsafe_string(pointer(buffer), 512))"
-	end
+    vertex_shader = compile_shader("vertex.glsl", GL_VERTEX_SHADER)
+    fragment_shader = compile_shader("fragment.glsl", GL_FRAGMENT_SHADER)
 
 	# Connect the shaders by combining them into a program
 	shader_program = glCreateProgram()
