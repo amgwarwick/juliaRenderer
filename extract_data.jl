@@ -1,84 +1,42 @@
-using StaticArrays
-
-function count_geoms(scene_geoms::Ptr{MuJoCo.LibMuJoCo.mjvGeom_}, num_geoms::Int32)
-    # Initialize counts for each type
-    box_count = 0
-    sphere_count = 0
-    plane_count = 0
-    capsule_count = 0
-
-    # Loop through each geom and count its type
-    for i in 0:num_geoms-1
+function count_geoms(scene)
+    counts = DefaultDict{MuJoCo.mjtGeom, Int32}(Int32(0))
+    scene_geoms = scene.geoms
+    for i in 0:(scene.ngeom - 1)
         # Compute the pointer to the current geom
         geom_ptr = Ptr{MuJoCo.LibMuJoCo.mjvGeom_}(scene_geoms + i * sizeof(MuJoCo.LibMuJoCo.mjvGeom_))
         
         # Load the geom structure
-        geom = unsafe_load(geom_ptr)   
-        geom_type = geom.type
-        
-        # Count based on the geom type
-        if geom_type == 6
-            box_count += 1
-        elseif geom_type == 4 || geom_type == 2
-            sphere_count += 1
-        elseif geom_type == 0
-            plane_count += 1
-        elseif geom_type == 3
-            capsule_count += 1
-        end
+        geom = unsafe_load(geom_ptr)
+        geom_type = MuJoCo.mjtGeom(geom.type)
+        counts[geom_type] += 1
     end
     
-    return box_count, sphere_count, plane_count, capsule_count
+    #Count ellipsoids as spheres
+    counts[MuJoCo.mjGEOM_SPHERE] += counts[MuJoCo.mjGEOM_ELLIPSOID]
+    counts[MuJoCo.mjGEOM_ELLIPSOID] = 0
+
+    return counts
 end
 
-function extract_geom_data(model, datas, n_env, countgeoms)
-
-	matrix_instance_data_boxes = zeros(Float32, 22, n_env * countgeoms["nboxes"])
-	matrix_instance_data_spheres = zeros(Float32, 22, n_env * countgeoms["nspheres"])
-	matrix_instance_data_capsules = zeros(Float32, 22, n_env * countgeoms["ncapsules"])
-	matrix_instance_data_planes = zeros(Float32, 22, n_env * countgeoms["nplanes"])
-	
-    # Initialize counters
+function extract_geom_data(batchRenderer, datas)
+    model = batchRenderer.model
+    geom_counts = batchRenderer.geom_counts
+    n_env = length(datas)
+    supported_geoms = [MuJoCo.mjGEOM_PLANE, MuJoCo.mjGEOM_SPHERE,
+                       MuJoCo.mjGEOM_CAPSULE, MuJoCo.mjGEOM_BOX]
+    matrix_instance_data = Dict(geom_id => zeros(Float32, 22, n_env * geom_counts[geom_id])
+                                for geom_id in supported_geoms)
     for j in 1:n_env
-        box_counter::Int32 = 0
-        sphere_counter::Int32 = 0
-        capsule_counter::Int32 = 0
-        plane_counter::Int32 = 0
-
-        #scene inside
-        #scn = MuJoCo.VisualiserScene()
-        #cam = MuJoCo.VisualiserCamera()
-        #opt = MuJoCo.VisualiserOption()
-        #pert = MuJoCo.VisualiserPerturb()
-        #MuJoCo.mjv_makeScene(model, scn, 1000) #scn should now contain the scene object
-
-        # mjCAT_ALL = 7
-        #catmask = 7
-
-        #mjv_updateScene(model, datas[j], opt, pert, cam, catmask, scn)
-
-        #n_geoms = scn.ngeom
-
+        counters = Dict(geom_id => 0 for geom_id in supported_geoms)
         n_geoms::Int32 = model.ngeom
 
         # Loop over geometries
         for i in 1:n_geoms
-            # Compute the pointer to the current geom
-            #geom_ptr = Ptr{MuJoCo.LibMuJoCo.mjvGeom_}(scn.geoms + i * sizeof(MuJoCo.LibMuJoCo.mjvGeom_))
-            
-            # Load the geom structure
-            #geom = unsafe_load(geom_ptr)
-            #geom_type = geom.type
-            geom_type::Int32 = model.geom_type[i]
-            #pos = Float32[geom.pos...]
-			pos = SVector{3, Float32}(datas[j].geom_xpos[i, :])
+            geom_type = MuJoCo.mjtGeom(model.geom_type[i])
 
-            #xmat = collect(geom.mat)
-            #xmat = Float32[xmat...]
-
-            xmat = SVector{9, Float32}(datas[j].geom_xmat[i, :])
-
-            rgba = SVector{4, Float32}(model.geom_rgba[i, :])
+			pos = SVector{3, Float32}(view(datas[j].geom_xpos, i, :))
+            xmat = SVector{9, Float32}(view(datas[j].geom_xmat, i, :))
+            rgba = SVector{4, Float32}(view(model.geom_rgba, i, :))
 
             offset::Int32 = j - 1
 
@@ -87,84 +45,41 @@ function extract_geom_data(model, datas, n_env, countgeoms)
                 #tex_id = get(geomTexID_to_openglTexID, tex_id, -1)
                 #tex_id = Float32(-1)
             #end
-
             tex_id::Int32 = -1
 
             # Initialize the geomsize array
             geomsize = SVector{3, Float32}(model.geom_size[i, :])
 
-            if geom_type == 2
+            if geom_type == MuJoCo.mjGEOM_SPHERE
 				geomsize = SVector{3, Float32}(geomsize[1], geomsize[1], geomsize[1])
-            elseif geom_type == 0
+            elseif geom_type == MuJoCo.mjGEOM_PLANE
                 if geomsize[1] == 0
-                    #geomsize[1] = 5.0
                     geomsize = SVector{3, Float32}(5.0, geomsize[2], geomsize[3])
                 end
                 if geomsize[2] == 0
-                    #geomsize[2] = 5.0
                     geomsize = SVector{3, Float32}(geomsize[1], 5.0, geomsize[3])
                 end
-					geomsize = SVector{3, Float32}(geomsize[1], geomsize[2], 1.0)
-            elseif geom_type == 3
+				geomsize = SVector{3, Float32}(geomsize[1], geomsize[2], 1.0)
+            elseif geom_type == MuJoCo.mjGEOM_CAPSULE
                 # for scene geomsize = Float32[geomsize[2], geomsize[2], geomsize[3]]
                 geomsize = SVector{3, Float32}(geomsize[1], geomsize[1], geomsize[2]) #for model
             end
 
             # Compute the model matrix, M is pre-allocated and reused
             M = modelMatrix(pos, xmat, geomsize)
-
-			if geom_type == 6
-				box_idx::Int32 = (j - 1) * countgeoms["nboxes"] + box_counter + 1
-				box_counter += 1
-				# Reshape, transpose, and flatten the matrix
-				matrix_instance_data_boxes[1:16, box_idx] = M
-				matrix_instance_data_boxes[17:20, box_idx] = rgba
-				matrix_instance_data_boxes[21, box_idx] = offset
-				matrix_instance_data_boxes[22, box_idx] = tex_id
-
-			elseif geom_type == 4 || geom_type == 2
-				sphere_idx::Int32 = (j - 1) * countgeoms["nspheres"] + sphere_counter + 1
-				sphere_counter += 1
-				# Reshape, transpose, and flatten the matrix
-				matrix_instance_data_spheres[1:16, sphere_idx] = M
-				matrix_instance_data_spheres[17:20, sphere_idx] = rgba
-				matrix_instance_data_spheres[21, sphere_idx] = offset
-				matrix_instance_data_spheres[22, sphere_idx] = tex_id
-
-			elseif geom_type == 0
-				plane_idx::Int32 = (j - 1) * countgeoms["nplanes"] + plane_counter + 1
-				plane_counter += 1
-				# Reshape, transpose, and flatten the matrix
-				matrix_instance_data_planes[1:16, plane_idx] = M
-				matrix_instance_data_planes[17:20, plane_idx] = rgba
-				matrix_instance_data_planes[21, plane_idx] = offset
-				matrix_instance_data_planes[22, plane_idx] = tex_id
-
-			elseif geom_type == 3
-				capsule_idx::Int32 = (j - 1) * countgeoms["ncapsules"] + capsule_counter + 1
-				capsule_counter += 1
-				# Reshape, transpose, and flatten the matrix
-				matrix_instance_data_capsules[1:16, capsule_idx] = M
-				matrix_instance_data_capsules[17:20, capsule_idx] = rgba
-				matrix_instance_data_capsules[21, capsule_idx] = offset
-				matrix_instance_data_capsules[22, capsule_idx] = tex_id
-
-                #move camera data and light data here
-
+            if geom_type == MuJoCo.mjGEOM_ELLIPSOID
+                geom_type = MuJoCo.mjGEOM_SPHERE
             end
+            counters[geom_type] += 1
+            geom_idx = (j - 1) * batchRenderer.geom_counts[geom_type] + counters[geom_type]
+			matrix_instance_data[geom_type][1:16,  geom_idx] = M
+			matrix_instance_data[geom_type][17:20, geom_idx] = rgba
+			matrix_instance_data[geom_type][21,    geom_idx] = offset
+			matrix_instance_data[geom_type][22,    geom_idx] = tex_id
         end
     end    
 
-    #println(matrix_instance_data_boxes)
-    #println(matrix_instance_data_spheres)
-    #println(matrix_instance_data_planes)
-    #println(matrix_instance_data_capsules)
-
-
-
-
-
-    return matrix_instance_data_boxes, matrix_instance_data_spheres, matrix_instance_data_planes, matrix_instance_data_capsules
+    return matrix_instance_data
 end
 
 

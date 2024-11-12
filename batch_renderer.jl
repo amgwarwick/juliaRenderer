@@ -10,7 +10,7 @@ struct BatchRenderer
     light_model::Dict{String, Any}
     #textures when ready
 
-    n_geoms_by_type::Dict{String, Int32}
+    geom_counts::Dict{MuJoCo.mjtGeom, Int32}
 
     renderers::Vector{GeomRenderer}
     shader_program::Int32
@@ -55,15 +55,7 @@ function BatchRenderer(model; res, n_envs)
         "light_specular" => light_specular
     )
 
-    nboxes, nspheres, nplanes, ncapsules = count_geoms(scn.geoms, n_geoms) # pass model only
-
-    # Create the dictionary with values cast to Int32
-    n_geoms_by_type = Dict(
-        "nboxes" => Int32(nboxes),
-        "nspheres" => Int32(nspheres),
-        "nplanes" => Int32(nplanes),
-        "ncapsules" => Int32(ncapsules)
-    )
+    geom_counts = count_geoms(scn)
 
     #initialise vector of renderers here
     boxRenderer = BoxRenderer()
@@ -79,13 +71,12 @@ function BatchRenderer(model; res, n_envs)
                         "specular", "cutoff", "exponent", "directional", "attenuation",
                         "viewPos", "headlightDir", "view", "n_env", "res"]
     shader_locations = Dict(v => glGetUniformLocation(shader_program, v) for v in shader_variables)
-    return BatchRenderer(model, res, n_envs, egl_ctx_success, projection_matrix, light_model, n_geoms_by_type, renderers, shader_program,
+    return BatchRenderer(model, res, n_envs, egl_ctx_success, projection_matrix, light_model, geom_counts, renderers, shader_program,
                          shader_locations)
 end
 
 function render(batchRenderer, datas)
-
-    instance_data_boxes, instance_data_spheres, instance_data_planes,  instance_data_capsules = extract_geom_data(batchRenderer.model, datas, batchRenderer.n_envs, batchRenderer.n_geoms_by_type)
+    instance_data = extract_geom_data(batchRenderer, datas)
 
     camera_data_pos, camera_data_mat = extract_camera_data(datas[1]) #will change
     camera_data_pos = Float32.(camera_data_pos)
@@ -114,10 +105,10 @@ function render(batchRenderer, datas)
     glUniform1f(batchRenderer.shader_locations["n_env"], batchRenderer.n_envs)
     glUniform1f(batchRenderer.shader_locations["res"], batchRenderer.res)
 
-    render_geoms(batchRenderer.renderers[1], instance_data_boxes)
-    render_geoms(batchRenderer.renderers[2], instance_data_spheres)
-    render_geoms(batchRenderer.renderers[3], instance_data_capsules)
-    render_geoms(batchRenderer.renderers[4], instance_data_planes)
+    render_geoms(batchRenderer.renderers[1], instance_data[MuJoCo.mjGEOM_BOX])
+    render_geoms(batchRenderer.renderers[2], instance_data[MuJoCo.mjGEOM_SPHERE])
+    render_geoms(batchRenderer.renderers[3], instance_data[MuJoCo.mjGEOM_CAPSULE])
+    render_geoms(batchRenderer.renderers[4], instance_data[MuJoCo.mjGEOM_PLANE])
 
     return save_egl_image("rendered_image_julia.png", batchRenderer.n_envs*batchRenderer.res, batchRenderer.res)
     
