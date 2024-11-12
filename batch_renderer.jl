@@ -3,8 +3,6 @@ struct BatchRenderer
     res::Int32
     n_envs::Int32
 
-    egl_ctx_success::Int32
-
     projection_matrix::Matrix{Float32}
 
     light_model::Dict{String, Any}
@@ -18,6 +16,7 @@ struct BatchRenderer
 end
 
 function BatchRenderer(model; res, n_envs)
+    setup_egl(Cint(n_envs*res), Cint(res))
 
     data = MuJoCo.init_data(model)
 
@@ -28,51 +27,26 @@ function BatchRenderer(model; res, n_envs)
     pert = MuJoCo.VisualiserPerturb()
     MuJoCo.mjv_makeScene(model, scn, 1000) #scn should now contain the scene object
 
-    # mjCAT_ALL = 7
-    catmask = 7
-
-    mjv_updateScene(model, data, opt, pert, cam, catmask, scn)
-
-    n_geoms = scn.ngeom
-
-    egl_ctx_success = setup_egl(Cint(n_envs*res), Cint(res))
-
+    mjv_updateScene(model, data, opt, pert, cam, MuJoCo.mjCAT_ALL, scn)
     camera_fovy = extract_camera_model(model)
-
     projection_matrix = Float32.(collect(transpose(perspective(Float32(deg2rad(camera_fovy)), Float32(1.0), Float32(0.1), Float32(1000.0)))))
-
-    light_ambient, light_attenuation, light_cutoff, light_diffuse, light_dir, light_directional, light_exponent, light_pos, light_specular = extract_light_model(model)
-    
-    light_model = Dict(
-        "light_ambient" => light_ambient,
-        "light_attenuation" => light_attenuation,
-        "light_cutoff" => light_cutoff,
-        "light_diffuse" => light_diffuse,
-        "light_dir" => light_dir,
-        "light_directional" => light_directional,
-        "light_exponent" => light_exponent,
-        "light_pos" => light_pos,
-        "light_specular" => light_specular
-    )
-
+    light_model = extract_light_model(model)
     geom_counts = count_geoms(scn)
 
-    #initialise vector of renderers here
     boxRenderer = BoxRenderer()
     sphereRenderer = SphereRenderer()
     capsuleRenderer = CapsuleRenderer()
     planeRenderer = PlaneRenderer()
     
-    renderers = [boxRenderer, sphereRenderer, capsuleRenderer, planeRenderer] 
+    geom_renderers = [boxRenderer, sphereRenderer, capsuleRenderer, planeRenderer] 
 
-    #display.(renderers)
     shader_program = compile_shaders()
     shader_variables = ["projection", "lightPos", "lightDir", "ambient", "diffuse",
                         "specular", "cutoff", "exponent", "directional", "attenuation",
                         "viewPos", "headlightDir", "view", "n_env", "res"]
     shader_locations = Dict(v => glGetUniformLocation(shader_program, v) for v in shader_variables)
-    return BatchRenderer(model, res, n_envs, egl_ctx_success, projection_matrix, light_model, geom_counts, renderers, shader_program,
-                         shader_locations)
+    return BatchRenderer(model, res, n_envs, projection_matrix, light_model, 
+                         geom_counts, geom_renderers, shader_program, shader_locations)
 end
 
 function render(batchRenderer, datas)
@@ -110,6 +84,6 @@ function render(batchRenderer, datas)
     render_geoms(batchRenderer.renderers[3], instance_data[MuJoCo.mjGEOM_CAPSULE])
     render_geoms(batchRenderer.renderers[4], instance_data[MuJoCo.mjGEOM_PLANE])
 
-    return save_egl_image("rendered_image_julia.png", batchRenderer.n_envs*batchRenderer.res, batchRenderer.res)
-    
+    return to_cpu_array(batchRenderer.n_envs*batchRenderer.res, batchRenderer.res)
+    #return save_egl_image("rendered_image_julia.png", batchRenderer.n_envs*batchRenderer.res, batchRenderer.res)
 end

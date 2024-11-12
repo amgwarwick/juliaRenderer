@@ -168,49 +168,31 @@ function perspective(fovy::Float32, aspect::Float32, near::Float32, far::Float32
 end
 
 function extract_light_model(model)
-    # Create arrays to hold extracted light data
-    light_active = []
-    light_ambient = []
-    light_attenuation = []
-    light_bodyid = []
-    light_bulbradius = []
-    light_castshadow = []
-    light_cutoff = []
-    light_diffuse = []
-    light_dir = []
-    light_dir0 = []
-    light_directional = []
-    light_exponent = []
-    light_mode = []
-    light_pos = []
-    light_pos0 = []
-    light_poscom0 = []
-    light_specular = []
-    light_targetbodyid = []
+    light_model = DefaultDict(Vector) #TODO: Should set a eltype for the default array
 
     # Iterate over each light in the model
     for i in 1:model.nlight
-        push!(light_active, model.light_active[i])
-        push!(light_ambient, model.light_ambient[i, :])
-        push!(light_attenuation, model.light_attenuation[i, :])
-        push!(light_bodyid, model.light_bodyid[i])
-        push!(light_bulbradius, model.light_bulbradius[i])
-        push!(light_castshadow, model.light_castshadow[i])
-        push!(light_cutoff, model.light_cutoff[i])
-        push!(light_diffuse, model.light_diffuse[i, :])
-        push!(light_dir, model.light_dir[i, :])
-        push!(light_dir0, model.light_dir0[i, :])
-        push!(light_directional, model.light_directional[i])
-        push!(light_exponent, model.light_exponent[i])
-        push!(light_mode, model.light_mode[i])
-        push!(light_pos, model.light_pos[i, :])
-        push!(light_pos0, model.light_pos0[i, :])
-        push!(light_poscom0, model.light_poscom0[i, :])
-        push!(light_specular, model.light_specular[i, :])
-        push!(light_targetbodyid, model.light_targetbodyid[i])
+        push!(light_model["light_active"], model.light_active[i])
+        push!(light_model["light_ambient"], model.light_ambient[i, :])
+        push!(light_model["light_attenuation"], model.light_attenuation[i, :])
+        push!(light_model["light_bodyid"], model.light_bodyid[i])
+        push!(light_model["light_bulbradius"], model.light_bulbradius[i])
+        push!(light_model["light_castshadow"], model.light_castshadow[i])
+        push!(light_model["light_cutoff"], model.light_cutoff[i])
+        push!(light_model["light_diffuse"], model.light_diffuse[i, :])
+        push!(light_model["light_dir"], model.light_dir[i, :])
+        push!(light_model["light_dir0"], model.light_dir0[i, :])
+        push!(light_model["light_directional"], Int32.(model.light_directional[i]))
+        push!(light_model["light_exponent"], model.light_exponent[i])
+        push!(light_model["light_mode"], model.light_mode[i])
+        push!(light_model["light_pos"], Float32.(model.light_pos[i, :]))
+        push!(light_model["light_pos0"], model.light_pos0[i, :])
+        push!(light_model["light_poscom0"], model.light_poscom0[i, :])
+        push!(light_model["light_specular"], model.light_specular[i, :])
+        push!(light_model["light_targetbodyid"], model.light_targetbodyid[i])
     end
-
-    return light_ambient[1], light_attenuation[1], light_cutoff[1], light_diffuse[1], light_dir[1], Int32.(light_directional[1]), light_exponent[1], Float32.(light_pos[1]), light_specular[1]
+    light_model = Dict(k=>first(v) for (k,v) in light_model) #Get only the first light
+    return light_model
 end
 
 function extract_light_data(data, index)

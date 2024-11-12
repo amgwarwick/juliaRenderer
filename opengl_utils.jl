@@ -61,3 +61,14 @@ function save_egl_image(filename::String, width::Int32, height::Int32)
 
     #return img
 end
+
+function to_cpu_array(width::Int32, height::Int32)
+    glReadBuffer(GL_FRONT)
+
+    pixels = Vector{UInt8}(undef, width * height * 3)
+
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels)
+
+	image_data = reshape(pixels, (3, width, height))
+	image_data = reverse(image_data, dims=3)
+end
