@@ -1,0 +1,13 @@
+[deps]
+ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
+Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+GLAbstraction = "ca6e7d0a-b0c9-59ca-8aba-aebf11497e1c"
+GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
+GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
+Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
+ModernGL = "66fc600b-dfda-50eb-8b99-91cfa97b1301"
+MuJoCo = "1c101251-5e0f-4746-b44c-0728d433b68a"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"

@@ -14,7 +14,7 @@ using Colors
 
 
 # Load the shared library
-const LIBEGL = "/home/utente/Desktop/libegl_example.so"
+const LIBEGL = "./libegl_example.so"
 
 
 function setup_egl(width::Cint, height::Cint)
@@ -284,7 +284,7 @@ function render(BatchRenderer, datas)
     display(BatchRenderer.renderers[3], instance_data_capsules, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos, BatchRenderer)
     display(BatchRenderer.renderers[4], instance_data_planes, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos, BatchRenderer)
 
-    #return save_egl_image("rendered_image_julia.png", BatchRenderer.n_envs*BatchRenderer.res, BatchRenderer.res)
+    return save_egl_image("rendered_image_julia.png", BatchRenderer.n_envs*BatchRenderer.res, BatchRenderer.res)
     
 end
 

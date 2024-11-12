@@ -18,17 +18,9 @@ include("rendererStructureGC.jl")
 n_envs = 16
 model_path = "rodent_with_floor.xml"
 model = MuJoCo.load_model(model_path)
-
 datas = [MuJoCo.init_data(model) for _ = 1:n_envs]
 for data in datas
     MuJoCo.step!(model, data)
 end
-batchRenderer = BatchRenderer(model, res=64, n_envs=n_envs)
-
-function benchMark(batchRenderer, datas)
-    for t = 1:32
-        images = render(batchRenderer, datas)
-    end
-end
-
-@time benchMark(batchRenderer, datas)
+batchRenderer = BatchRenderer(model, res=512, n_envs=n_envs)
+images = render(batchRenderer, datas)
