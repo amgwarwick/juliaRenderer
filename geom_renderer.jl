@@ -1,34 +1,15 @@
 struct GeomRenderer
     instance_vbo::UInt32
-    shader_program::Int32
+    #shader_program::Int32
     sizeindices::Int32
     vao::UInt32
-    shader_locations::Dict{String, Int32}
+    #shader_locations::Dict{String, Int32}
 end
 
-function render_geoms(typeRenderer::GeomRenderer, batchRenderer::BatchRenderer, instance_data, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos)
-    final, forward = lookatmatrix(camera_data_pos, camera_data_mat)
+function render_geoms(typeRenderer::GeomRenderer, instance_data)
+    
     glBindBuffer(GL_ARRAY_BUFFER, typeRenderer.instance_vbo)
     glBufferData(GL_ARRAY_BUFFER, sizeof(instance_data), instance_data, GL_DYNAMIC_DRAW)
-
-    glUseProgram(typeRenderer.shader_program)
-
-    glUniformMatrix4fv(typeRenderer.shader_locations["view"], 1, GL_FALSE, final)
-    glUniformMatrix4fv(typeRenderer.shader_locations["projection"], 1, GL_FALSE, batchRenderer.projection_matrix)
-    
-    glUniform3fv(typeRenderer.shader_locations["lightPos"], 1, light_data_xpos)
-    glUniform3fv(typeRenderer.shader_locations["lightDir"], 1, light_data_xdir)
-    glUniform3fv(typeRenderer.shader_locations["ambient"], 1, batchRenderer.light_model["light_ambient"])
-    glUniform3fv(typeRenderer.shader_locations["diffuse"], 1, batchRenderer.light_model["light_diffuse"])
-    glUniform3fv(typeRenderer.shader_locations["specular"], 1, batchRenderer.light_model["light_specular"])
-    glUniform1f(typeRenderer.shader_locations["cutoff"], deg2rad(batchRenderer.light_model["light_cutoff"]))  
-    glUniform1f(typeRenderer.shader_locations["exponent"], batchRenderer.light_model["light_exponent"])  
-    glUniform1i(typeRenderer.shader_locations["directional"], batchRenderer.light_model["light_directional"])  
-    glUniform3fv(typeRenderer.shader_locations["attenuation"], 1, batchRenderer.light_model["light_attenuation"])
-    glUniform3fv(typeRenderer.shader_locations["viewPos"], 1, camera_data_pos)
-    glUniform3fv(typeRenderer.shader_locations["headlightDir"], 1, forward)
-    glUniform1f(typeRenderer.shader_locations["n_env"], batchRenderer.n_envs) 
-    glUniform1f(typeRenderer.shader_locations["res"], batchRenderer.res)  
     
     glBindVertexArray(typeRenderer.vao)
     
@@ -98,7 +79,6 @@ function GeomRenderer(vertices, indices, normals, tex_coords)
     else
     	ebo = nothing
     end
-    
 
     # Bind and configure instance VBO
     glBindBuffer(GL_ARRAY_BUFFER, instance_vbo[])
@@ -123,27 +103,7 @@ function GeomRenderer(vertices, indices, normals, tex_coords)
     glVertexAttribDivisor(9, 1)
 
     glBindVertexArray(vao[])
-    
-    shader_program = compile_shaders()
-    
-    shader_locations = Dict(
-        "projection" => glGetUniformLocation(shader_program, "projection"),
-        "lightPos" => glGetUniformLocation(shader_program, "lightPos"),
-        "lightDir" => glGetUniformLocation(shader_program, "lightDir"),
-        "ambient" => glGetUniformLocation(shader_program, "ambient"),
-        "diffuse" => glGetUniformLocation(shader_program, "diffuse"),
-        "specular" => glGetUniformLocation(shader_program, "specular"),
-        "cutoff" => glGetUniformLocation(shader_program, "cutoff"),
-        "exponent" => glGetUniformLocation(shader_program, "exponent"),
-        "directional" => glGetUniformLocation(shader_program, "directional"),
-        "attenuation" => glGetUniformLocation(shader_program, "attenuation"),
-        "viewPos" => glGetUniformLocation(shader_program, "viewPos"),
-        "headlightDir" => glGetUniformLocation(shader_program, "headlightDir"),
-        "view" => glGetUniformLocation(shader_program, "view"),
-        "n_env" => glGetUniformLocation(shader_program, "n_env"),
-        "res" => glGetUniformLocation(shader_program, "res")
-    )
 
-    return GeomRenderer(instance_vbo[], shader_program, indices === nothing ? 0 : size(indices ,1), vao[], shader_locations)
+    return GeomRenderer(instance_vbo[], indices === nothing ? 0 : size(indices ,1), vao[])
 
 end

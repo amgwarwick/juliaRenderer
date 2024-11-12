@@ -13,14 +13,7 @@ using Colors
 include("basic_geoms.jl")
 include("extract_data.jl")
 include("opengl_utils.jl")
-
-struct GeomRenderer
-    instance_vbo::UInt32
-    shader_program::Int32
-    sizeindices::Int32
-    vao::UInt32
-    shader_locations::Dict{String, Int32}
-end
+include("geom_renderer.jl")
 
 struct BatchRenderer
     res::Int32
@@ -36,8 +29,9 @@ struct BatchRenderer
     n_geoms_by_type::Dict{String, Int32}
 
     renderers::Vector{GeomRenderer}
+    shader_program::Int32
+    shader_locations::Dict{String, Int32}
 end
-include("geom_renderer.jl")
 
 function BatchRenderer(model; res, n_envs)
 
@@ -96,8 +90,13 @@ function BatchRenderer(model; res, n_envs)
     renderers = [boxRenderer, sphereRenderer, capsuleRenderer, planeRenderer] 
 
     #display.(renderers)
-
-    return BatchRenderer(res, n_envs, egl_ctx_success, projection_matrix, light_model, n_geoms_by_type, renderers)
+    shader_program = compile_shaders()
+    shader_variables = ["projection", "lightPos", "lightDir", "ambient", "diffuse",
+                        "specular", "cutoff", "exponent", "directional", "attenuation",
+                        "viewPos", "headlightDir", "view", "n_env", "res"]
+    shader_locations = Dict(v => glGetUniformLocation(shader_program, v) for v in shader_variables)
+    return BatchRenderer(res, n_envs, egl_ctx_success, projection_matrix, light_model, n_geoms_by_type, renderers, shader_program,
+                         shader_locations)
 end
 
 function render(batchRenderer, datas)
@@ -106,16 +105,35 @@ function render(batchRenderer, datas)
 
     camera_data_pos, camera_data_mat = extract_camera_data(datas[1]) #will change
     camera_data_pos = Float32.(camera_data_pos)
+    final, forward = lookatmatrix(camera_data_pos, camera_data_mat)
 
     light_data_xdir, light_data_xpos = extract_light_data(datas[1], 1) #will change
 
     glEnable(GL_DEPTH_TEST)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    glUseProgram(batchRenderer.shader_program)
 
-    render_geoms(batchRenderer.renderers[1], batchRenderer, instance_data_boxes, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos)
-    render_geoms(batchRenderer.renderers[2], batchRenderer, instance_data_spheres, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos)
-    render_geoms(batchRenderer.renderers[3], batchRenderer, instance_data_capsules, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos)
-    render_geoms(batchRenderer.renderers[4], batchRenderer, instance_data_planes, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos)
+    glUniformMatrix4fv(batchRenderer.shader_locations["view"], 1, GL_FALSE, final)
+    glUniformMatrix4fv(batchRenderer.shader_locations["projection"], 1, GL_FALSE, batchRenderer.projection_matrix)
+    
+    glUniform3fv(batchRenderer.shader_locations["lightPos"], 1, light_data_xpos)
+    glUniform3fv(batchRenderer.shader_locations["lightDir"], 1, light_data_xdir)
+    glUniform3fv(batchRenderer.shader_locations["ambient"], 1, batchRenderer.light_model["light_ambient"])
+    glUniform3fv(batchRenderer.shader_locations["diffuse"], 1, batchRenderer.light_model["light_diffuse"])
+    glUniform3fv(batchRenderer.shader_locations["specular"], 1, batchRenderer.light_model["light_specular"])
+    glUniform1f(batchRenderer.shader_locations["cutoff"], deg2rad(batchRenderer.light_model["light_cutoff"]))  
+    glUniform1f(batchRenderer.shader_locations["exponent"], batchRenderer.light_model["light_exponent"])  
+    glUniform1i(batchRenderer.shader_locations["directional"], batchRenderer.light_model["light_directional"])  
+    glUniform3fv(batchRenderer.shader_locations["attenuation"], 1, batchRenderer.light_model["light_attenuation"])
+    glUniform3fv(batchRenderer.shader_locations["viewPos"], 1, camera_data_pos)
+    glUniform3fv(batchRenderer.shader_locations["headlightDir"], 1, forward)
+    glUniform1f(batchRenderer.shader_locations["n_env"], batchRenderer.n_envs)
+    glUniform1f(batchRenderer.shader_locations["res"], batchRenderer.res)
+
+    render_geoms(batchRenderer.renderers[1], instance_data_boxes)
+    render_geoms(batchRenderer.renderers[2], instance_data_spheres)
+    render_geoms(batchRenderer.renderers[3], instance_data_capsules)
+    render_geoms(batchRenderer.renderers[4], instance_data_planes)
 
     return save_egl_image("rendered_image_julia.png", batchRenderer.n_envs*batchRenderer.res, batchRenderer.res)
     
