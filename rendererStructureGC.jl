@@ -100,9 +100,9 @@ function BatchRenderer(model; res, n_envs)
     return BatchRenderer(res, n_envs, egl_ctx_success, projection_matrix, light_model, n_geoms_by_type, renderers)
 end
 
-function render(BatchRenderer, datas)
+function render(batchRenderer, datas)
 
-    instance_data_boxes, instance_data_spheres, instance_data_planes,  instance_data_capsules = extract_geom_data(model, datas, BatchRenderer.n_envs, BatchRenderer.n_geoms_by_type)
+    instance_data_boxes, instance_data_spheres, instance_data_planes,  instance_data_capsules = extract_geom_data(model, datas, batchRenderer.n_envs, batchRenderer.n_geoms_by_type)
 
     camera_data_pos, camera_data_mat = extract_camera_data(datas[1]) #will change
     camera_data_pos = Float32.(camera_data_pos)
@@ -112,12 +112,12 @@ function render(BatchRenderer, datas)
     glEnable(GL_DEPTH_TEST)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-    display(BatchRenderer.renderers[1], instance_data_boxes, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos, BatchRenderer)
-    display(BatchRenderer.renderers[2], instance_data_spheres, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos, BatchRenderer)
-    display(BatchRenderer.renderers[3], instance_data_capsules, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos, BatchRenderer)
-    display(BatchRenderer.renderers[4], instance_data_planes, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos, BatchRenderer)
+    render_geoms(batchRenderer.renderers[1], batchRenderer, instance_data_boxes, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos)
+    render_geoms(batchRenderer.renderers[2], batchRenderer, instance_data_spheres, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos)
+    render_geoms(batchRenderer.renderers[3], batchRenderer, instance_data_capsules, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos)
+    render_geoms(batchRenderer.renderers[4], batchRenderer, instance_data_planes, light_data_xdir, light_data_xpos, camera_data_mat, camera_data_pos)
 
-    return save_egl_image("rendered_image_julia.png", BatchRenderer.n_envs*BatchRenderer.res, BatchRenderer.res)
+    return save_egl_image("rendered_image_julia.png", batchRenderer.n_envs*batchRenderer.res, batchRenderer.res)
     
 end
 
