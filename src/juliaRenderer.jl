@@ -1,4 +1,4 @@
-module Renderer
+module juliaRenderer
 using StaticArrays
 using GLAbstraction
 using ModernGL
