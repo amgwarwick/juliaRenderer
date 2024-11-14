@@ -1,5 +1,5 @@
 import MuJoCo
-using Images
+import Images
 include("../src/juliaRenderer.jl")
 n_envs = 16
 model_path = "examples/rodent_with_floor.xml"
@@ -13,5 +13,5 @@ batchRenderer = Renderer.BatchRenderer(model, res=512, n_envs=n_envs)
 image_data = Renderer.render(batchRenderer, datas)
 
 float_image_data = convert(Array{Float32, 3}, image_data) / 255.0
-img = collect(colorview(RGB, float_image_data)')
-save("example_render.png", img)
+img = collect(Images.colorview(Images.RGB, float_image_data)')
+Images.save("example_render.png", img)

@@ -4,7 +4,6 @@ using GLAbstraction
 using ModernGL
 using MuJoCo
 using LinearAlgebra
-using Images
 import DataStructures: DefaultDict
 include("basic_geoms.jl")
 include("egl_utils.jl")
