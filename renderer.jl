@@ -7,6 +7,7 @@ using LinearAlgebra
 using Images
 import DataStructures: DefaultDict
 include("basic_geoms.jl")
+include("egl_utils.jl")
 include("opengl_utils.jl")
 include("geom_renderer.jl")
 include("extract_data.jl")

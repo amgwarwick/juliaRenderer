@@ -1,13 +1,3 @@
-const LIBEGL = "./libegl_example.so"
-function setup_egl(width::Cint, height::Cint)
-    # `setup_egl` now takes two integer arguments: width and height
-    egl_status = ccall((:setup_egl, LIBEGL), Cint, (Cint, Cint), width, height)
-    if egl_status != 0
-        error("Failed to initialize EGL. Return code: $egl_status.")
-    end
-    return egl_status
-end
-
 function compile_shader(source_file, shader_type)
     shader_source = open(read, source_file, "r") |> Vector{UInt8}
     shader = glCreateShader(shader_type)

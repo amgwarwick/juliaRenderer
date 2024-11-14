@@ -16,7 +16,7 @@ struct BatchRenderer
 end
 
 function BatchRenderer(model; res, n_envs)
-    setup_egl(Cint(n_envs*res), Cint(res))
+    EGLUtils.init_egl(n_envs*res, res)
 
     data = MuJoCo.init_data(model)
 
