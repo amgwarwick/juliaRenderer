@@ -15,8 +15,10 @@ function compile_shader(source_file, shader_type)
 end
 
 function compile_shaders()
-    vertex_shader = compile_shader("vertex.glsl", GL_VERTEX_SHADER)
-    fragment_shader = compile_shader("fragment.glsl", GL_FRAGMENT_SHADER)
+	vertex_source_path = joinpath(@__DIR__, "shaders", "vertex.glsl")
+	fragment_source_path = joinpath(@__DIR__, "shaders", "fragment.glsl")
+    vertex_shader = compile_shader(vertex_source_path, GL_VERTEX_SHADER)
+    fragment_shader = compile_shader(fragment_source_path, GL_FRAGMENT_SHADER)
 
 	# Connect the shaders by combining them into a program
 	shader_program = glCreateProgram()
