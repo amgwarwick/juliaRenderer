@@ -20,6 +20,9 @@ const EGL_RENDERABLE_TYPE = 0x3040
 const EGL_CONTEXT_MAJOR_VERSION = 0x3098
 const EGL_NO_CONTEXT = 0
 const EGLDisplayType = Ptr{Nothing} #Void pointer
+const EGL_MAX_PBUFFER_HEIGHT = 0x302A
+const EGL_MAX_PBUFFER_PIXELS = 0x302B
+const EGL_MAX_PBUFFER_WIDTH = 0x302C
 
 struct EGLResources
     eglDisplay::EGLDisplayType
@@ -77,17 +80,28 @@ function init_egl(width::Integer, height::Integer)::EGLResources
     eglContext = ccall((:eglCreateContext, EGL), Ptr{Nothing}, 
                         (EGLDisplayType, Ptr{Nothing}, Libc.Cint, Ptr{Cint}),
                         eglDisplay, config[], EGL_NO_CONTEXT, context_attribs)
-    if eglContext == 0
+    if eglContext == C_NULL
         error("Failed to create EGL context")
     end
-    pbuffer_attribs = Libc.Cint[EGL_WIDTH, width,
-                            EGL_HEIGHT, height,
-                            EGL_NONE]
 
+    max_width  = read_egl_config(eglDisplay, config[], EGL_MAX_PBUFFER_WIDTH)
+    max_height = read_egl_config(eglDisplay, config[], EGL_MAX_PBUFFER_HEIGHT)
+    max_pixels = read_egl_config(eglDisplay, config[], EGL_MAX_PBUFFER_PIXELS)
+    if width > max_width || height > max_height
+        @warn "About to create a surface with size $width x $height. EGL max is $max_width x $max_height."
+    end
+    if width*height > max_pixels
+        @warn "About to create a surface with $(width*height) pixels. EGL max is $max_pixels."
+    end
+    pbuffer_attribs = Libc.Cint[EGL_WIDTH, width,
+                                EGL_HEIGHT, height,
+                                EGL_NONE]
     eglSurface = ccall((:eglCreatePbufferSurface, EGL), Ptr{Nothing},
                         (EGLDisplayType, Ptr{Nothing}, Ptr{Cint}),
                         eglDisplay, config[], pbuffer_attribs)
-
+    if eglSurface == C_NULL
+        error("Failed to create EGL surface")
+    end
     eglCurrent = ccall((:eglMakeCurrent, EGL), Libc.Cint, (EGLDisplayType, Ptr{Nothing}, Ptr{Nothing}, Ptr{Nothing}),
                                             eglDisplay, eglSurface, eglSurface, eglContext)
     if eglCurrent != 1
@@ -112,6 +126,17 @@ function check_lib_egl()
         println("$EGL not found. Please make sure your system has EGL installed.")
         error(e)
     end
+end
+
+function read_egl_config(eglDisplay, config, key)
+    value = Ref{Cint}(0)
+    success = ccall((:eglGetConfigAttrib, EGL), Cint, 
+                    (EGLDisplayType, Ptr{Cvoid}, Cint, Ref{Cint}),
+                    eglDisplay, config, key, value)
+    if success != 1
+        error("Failed to get EGL config value")
+    end
+    return value[]
 end
 
 end
