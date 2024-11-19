@@ -26,7 +26,7 @@ function extract_geom_data(batchRenderer, datas)
                        MuJoCo.mjGEOM_CAPSULE, MuJoCo.mjGEOM_BOX]
     matrix_instance_data = Dict(geom_id => zeros(Float32, 22, n_env * geom_counts[geom_id])
                                 for geom_id in supported_geoms)
-    for j in 1:n_env
+    @Threads.threads for j in 1:n_env
         counters = Dict(geom_id => 0 for geom_id in supported_geoms)
         n_geoms::Int32 = model.ngeom
 

@@ -13,10 +13,11 @@ struct BatchRenderer
     renderers::Vector{GeomRenderer}
     shader_program::Int32
     shader_locations::Dict{String, Int32}
+    egl_resources::EGLUtils.EGLResources
 end
 
 function BatchRenderer(model; res, n_envs)
-    EGLUtils.init_egl(n_envs*res, res)
+    egl_resources = EGLUtils.init_egl(n_envs*res, res)
 
     data = MuJoCo.init_data(model)
 
@@ -46,7 +47,7 @@ function BatchRenderer(model; res, n_envs)
                         "viewPos", "headlightDir", "view", "n_env", "res"]
     shader_locations = Dict(v => glGetUniformLocation(shader_program, v) for v in shader_variables)
     return BatchRenderer(model, res, n_envs, projection_matrix, light_model, 
-                         geom_counts, geom_renderers, shader_program, shader_locations)
+                         geom_counts, geom_renderers, shader_program, shader_locations, egl_resources)
 end
 
 function render(batchRenderer, datas)
