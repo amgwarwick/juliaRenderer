@@ -22,21 +22,26 @@ function extract_geom_data(batchRenderer, datas)
     model = batchRenderer.model
     geom_counts = batchRenderer.geom_counts
     n_env = length(datas)
-    supported_geoms = [MuJoCo.mjGEOM_PLANE, MuJoCo.mjGEOM_SPHERE,
-                       MuJoCo.mjGEOM_CAPSULE, MuJoCo.mjGEOM_BOX]
+    supported_geoms = @SVector [MuJoCo.mjGEOM_PLANE, MuJoCo.mjGEOM_SPHERE,
+                                MuJoCo.mjGEOM_CAPSULE, MuJoCo.mjGEOM_BOX]
     matrix_instance_data = Dict(geom_id => zeros(Float32, 22, n_env * geom_counts[geom_id])
                                 for geom_id in supported_geoms)
+    n_geoms::Int32 = model.ngeom
+    geom_types = model.geom_type
+    geom_sizes = model.geom_size
+    geom_rgbas = model.geom_rgba
     @Threads.threads for j in 1:n_env
         counters = Dict(geom_id => 0 for geom_id in supported_geoms)
-        n_geoms::Int32 = model.ngeom
+        geom_xpos  = datas[j].geom_xpos
+        geom_xmats = datas[j].geom_xmat
 
         # Loop over geometries
         for i in 1:n_geoms
-            geom_type = MuJoCo.mjtGeom(model.geom_type[i])
+            geom_type = MuJoCo.mjtGeom(geom_types[i])
 
-			pos = SVector{3, Float32}(view(datas[j].geom_xpos, i, :))
-            xmat = SVector{9, Float32}(view(datas[j].geom_xmat, i, :))
-            rgba = SVector{4, Float32}(view(model.geom_rgba, i, :))
+			pos = SVector{3, Float32}(view(geom_xpos, i, :))
+            xmat = SVector{9, Float32}(view(geom_xmats, i, :))
+            rgba = SVector{4, Float32}(view(geom_rgbas, i, :))
 
             offset::Int32 = j - 1
 
@@ -48,7 +53,7 @@ function extract_geom_data(batchRenderer, datas)
             tex_id::Int32 = -1
 
             # Initialize the geomsize array
-            geomsize = SVector{3, Float32}(model.geom_size[i, :])
+            geomsize = SVector{3, Float32}(view(geom_sizes, i, :))
 
             if geom_type == MuJoCo.mjGEOM_SPHERE
 				geomsize = SVector{3, Float32}(geomsize[1], geomsize[1], geomsize[1])
