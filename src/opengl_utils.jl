@@ -55,7 +55,8 @@ function save_egl_image(filename::String, width::Int32, height::Int32)
 end
 
 function to_cpu_array(width::Int32, height::Int32)
-    glReadBuffer(GL_FRONT)
+    glFinish()
+	glReadBuffer(GL_FRONT)
 
     pixels = Vector{UInt8}(undef, width * height * 3)
 

@@ -17,7 +17,7 @@ function benchmark(model; n_envs=64, res=64, n_iter=100)
     GC.gc()
     start_t = time()
     for i=1:n_iter
-        image_data = juliaRenderer.render(batchRenderer, datas)
+        image_data = juliaRenderer.render!(batchRenderer, datas)
     end
     stop_t = time()
     juliaRenderer.EGLUtils.free!(batchRenderer.egl_resources)
@@ -28,13 +28,13 @@ function ref_image(model, res)
     data = MuJoCo.init_data(model)
     MuJoCo.step!(model, data)
     batchRenderer = juliaRenderer.BatchRenderer(model; n_envs=1, res)
-    ref_im = juliaRenderer.render(batchRenderer, [data])
+    ref_im = juliaRenderer.render!(batchRenderer, [data])
     juliaRenderer.EGLUtils.free!(batchRenderer.egl_resources)
     return ref_im
 end
 
 function validate_against_ref(batchRenderer, datas, ref)
-    image_data = juliaRenderer.render(batchRenderer, datas)
+    image_data = juliaRenderer.render!(batchRenderer, datas)
     res = batchRenderer.res
     total_error = 0.0
     for i=1:batchRenderer.n_envs

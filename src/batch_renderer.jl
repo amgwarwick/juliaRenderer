@@ -9,6 +9,8 @@ struct BatchRenderer
     #textures when ready
 
     geom_counts::Dict{MuJoCo.mjtGeom, Int32}
+    instance_data::Dict{MuJoCo.mjtGeom, Matrix{Float32}}
+    pixel_buffer::Vector{UInt8}
 
     renderers::Vector{GeomRenderer}
     shader_program::Int32
@@ -33,6 +35,10 @@ function BatchRenderer(model; res, n_envs)
     projection_matrix = Float32.(collect(transpose(perspective(Float32(deg2rad(camera_fovy)), Float32(1.0), Float32(0.1), Float32(1000.0)))))
     light_model = extract_light_model(model)
     geom_counts = count_geoms(scn)
+    supported_geoms = (MuJoCo.mjGEOM_PLANE, MuJoCo.mjGEOM_SPHERE,
+                       MuJoCo.mjGEOM_CAPSULE, MuJoCo.mjGEOM_BOX)
+    instance_data = Dict(geom_id => zeros(Float32, 22, n_envs * geom_counts[geom_id])
+                         for geom_id in supported_geoms)
 
     boxRenderer = BoxRenderer()
     sphereRenderer = SphereRenderer()
@@ -46,12 +52,15 @@ function BatchRenderer(model; res, n_envs)
                         "specular", "cutoff", "exponent", "directional", "attenuation",
                         "viewPos", "headlightDir", "view", "n_env", "res"]
     shader_locations = Dict(v => glGetUniformLocation(shader_program, v) for v in shader_variables)
-    return BatchRenderer(model, res, n_envs, projection_matrix, light_model, 
-                         geom_counts, geom_renderers, shader_program, shader_locations, egl_resources)
+    pixel_buffer = Vector{UInt8}(undef, n_envs * res * res * 3)
+
+    return BatchRenderer(model, res, n_envs, projection_matrix, light_model, geom_counts,
+                         instance_data, pixel_buffer, geom_renderers, shader_program,
+                         shader_locations, egl_resources)
 end
 
-function render(batchRenderer, datas)
-    instance_data = extract_geom_data(batchRenderer, datas)
+function render!(batchRenderer, datas)
+    extract_geom_data!(batchRenderer, datas)
 
     camera_data_pos, camera_data_mat = extract_camera_data(datas[1]) #will change
     camera_data_pos = Float32.(camera_data_pos)
@@ -80,11 +89,14 @@ function render(batchRenderer, datas)
     glUniform1f(batchRenderer.shader_locations["n_env"], batchRenderer.n_envs)
     glUniform1f(batchRenderer.shader_locations["res"], batchRenderer.res)
 
-    render_geoms(batchRenderer.renderers[1], instance_data[MuJoCo.mjGEOM_BOX])
-    render_geoms(batchRenderer.renderers[2], instance_data[MuJoCo.mjGEOM_SPHERE])
-    render_geoms(batchRenderer.renderers[3], instance_data[MuJoCo.mjGEOM_CAPSULE])
-    render_geoms(batchRenderer.renderers[4], instance_data[MuJoCo.mjGEOM_PLANE])
+    render_geoms(batchRenderer.renderers[1], batchRenderer.instance_data[MuJoCo.mjGEOM_BOX])
+    render_geoms(batchRenderer.renderers[2], batchRenderer.instance_data[MuJoCo.mjGEOM_SPHERE])
+    render_geoms(batchRenderer.renderers[3], batchRenderer.instance_data[MuJoCo.mjGEOM_CAPSULE])
+    render_geoms(batchRenderer.renderers[4], batchRenderer.instance_data[MuJoCo.mjGEOM_PLANE])
 
-    return to_cpu_array(batchRenderer.n_envs*batchRenderer.res, batchRenderer.res)
-    #return save_egl_image("rendered_image_julia.png", batchRenderer.n_envs*batchRenderer.res, batchRenderer.res)
+    glReadBuffer(GL_FRONT)
+    height = batchRenderer.res
+    width = batchRenderer.n_envs * height
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, batchRenderer.pixel_buffer)
+	return reshape(batchRenderer.pixel_buffer, (3, width, height))
 end

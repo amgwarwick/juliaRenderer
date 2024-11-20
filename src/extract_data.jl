@@ -18,20 +18,17 @@ function count_geoms(scene)
     return counts
 end
 
-function extract_geom_data(batchRenderer, datas)
+function extract_geom_data!(batchRenderer, datas)
     model = batchRenderer.model
     geom_counts = batchRenderer.geom_counts
     n_env = length(datas)
-    supported_geoms = @SVector [MuJoCo.mjGEOM_PLANE, MuJoCo.mjGEOM_SPHERE,
-                                MuJoCo.mjGEOM_CAPSULE, MuJoCo.mjGEOM_BOX]
-    matrix_instance_data = Dict(geom_id => zeros(Float32, 22, n_env * geom_counts[geom_id])
-                                for geom_id in supported_geoms)
+
     n_geoms::Int32 = model.ngeom
     geom_types = model.geom_type
     geom_sizes = model.geom_size
     geom_rgbas = model.geom_rgba
     @Threads.threads for j in 1:n_env
-        counters = Dict(geom_id => 0 for geom_id in supported_geoms)
+        counters = Dict(geom_id => 0 for geom_id in keys(batchRenderer.instance_data))
         geom_xpos  = datas[j].geom_xpos
         geom_xmats = datas[j].geom_xmat
 
@@ -77,14 +74,13 @@ function extract_geom_data(batchRenderer, datas)
             end
             counters[geom_type] += 1
             geom_idx = (j - 1) * batchRenderer.geom_counts[geom_type] + counters[geom_type]
-			matrix_instance_data[geom_type][1:16,  geom_idx] = M
-			matrix_instance_data[geom_type][17:20, geom_idx] = rgba
-			matrix_instance_data[geom_type][21,    geom_idx] = offset
-			matrix_instance_data[geom_type][22,    geom_idx] = tex_id
+			batchRenderer.instance_data[geom_type][1:16,  geom_idx] = M
+			batchRenderer.instance_data[geom_type][17:20, geom_idx] = rgba
+			batchRenderer.instance_data[geom_type][21,    geom_idx] = offset
+			batchRenderer.instance_data[geom_type][22,    geom_idx] = tex_id
         end
     end    
 
-    return matrix_instance_data
 end
 
 
