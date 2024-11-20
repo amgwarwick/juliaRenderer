@@ -1,5 +1,6 @@
 import MuJoCo
 import Images
+import LinearAlgebra: norm
 include("../src/juliaRenderer.jl")
 
 model_path = "examples/rodent_with_floor.xml"
@@ -46,6 +47,9 @@ end
 println("n_envs,res,fps,total_error")
 for res = 2 .^ (5:11)
     for n_envs = 2 .^ (1:11)
+        if res*n_envs > 32768
+            continue
+        end
         fps,total_error = benchmark(model; n_envs=n_envs, res=res, n_iter=100)
         println("$n_envs,$res,$fps,$total_error")
     end
