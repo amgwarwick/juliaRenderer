@@ -316,7 +316,7 @@ function generate_plane_vertices(half_x::Float32, half_y::Float32)
         1.0f0  0.0f0;  # Bottom-right
         1.0f0  1.0f0;  # Top-right
         0.0f0  1.0f0   # Top-left
-    ]
+    ] .* Float32(10.0)# .* 10.0
 
 
     indices = UInt32[0, 1, 2,  0, 2, 3] 

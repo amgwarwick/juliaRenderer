@@ -13,11 +13,9 @@ out vec3 Normal;
 out vec3 FragPos;
 out float left;
 out float right;
-out float texID;
-out vec2 texCoords;
+out vec3 texCoords;
 out float n_env_frag;
 out float res_frag;
-
 
 uniform mat4 view;        
 uniform mat4 projection;
@@ -47,12 +45,7 @@ void main()
     vColor = rgba;
     Normal = normalize(mat3(transpose(inverse(modelMatrix))) * normalize(vec3(aNormal)));
     FragPos = vec3(modelMatrix * vec4(aPos, 1.0));
-    texID = tex_id;
-    // Transform texture coordinates using the model matrix
-    vec4 texCoordH = vec4(aTexCoords, 0.0, 1.0);
-    texCoordH = modelMatrix * texCoordH;
-    texCoords = texCoordH.xy / texCoordH.w; // Perspective divide - not sure about last 3 lines of shader
+    texCoords = vec3(aTexCoords, tex_id);
     n_env_frag = n_env;
-    res_frag = res; 
-
+    res_frag = res;
 }

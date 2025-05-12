@@ -15,10 +15,14 @@ struct BatchRenderer
     renderers::Vector{GeomRenderer}
     shader_program::Int32
     shader_locations::Dict{String, Int32}
+
+    texture_array::UInt32
+
     egl_resources::EGLUtils.EGLResources
 end
 
 function BatchRenderer(model; res, n_envs)
+#n_envs = 1; res = 64; model = Main.model
     egl_resources = EGLUtils.init_egl(n_envs*res, res)
 
     data = MuJoCo.init_data(model)
@@ -50,13 +54,16 @@ function BatchRenderer(model; res, n_envs)
     shader_program = compile_shaders()
     shader_variables = ["projection", "lightPos", "lightDir", "ambient", "diffuse",
                         "specular", "cutoff", "exponent", "directional", "attenuation",
-                        "viewPos", "headlightDir", "view", "n_env", "res"]
+                        "viewPos", "headlightDir", "view", "n_env", "res", "texArray"]
     shader_locations = Dict(v => glGetUniformLocation(shader_program, v) for v in shader_variables)
+
     pixel_buffer = Vector{UInt8}(undef, n_envs * res * res * 3)
+
+    texture_array_pointer = upload_textures(extract_textures(model))
 
     return BatchRenderer(model, res, n_envs, projection_matrix, light_model, geom_counts,
                          instance_data, pixel_buffer, geom_renderers, shader_program,
-                         shader_locations, egl_resources)
+                         shader_locations, texture_array_pointer, egl_resources)
 end
 
 function render!(batchRenderer, datas)
@@ -71,7 +78,10 @@ function render!(batchRenderer, datas)
     glEnable(GL_DEPTH_TEST)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glUseProgram(batchRenderer.shader_program)
-
+    glActiveTexture(GL_TEXTURE0)
+    glBindTexture(GL_TEXTURE_2D_ARRAY, batchRenderer.texture_array)
+    glUniform1i(batchRenderer.shader_locations["texArray"], 0)
+    
     glUniformMatrix4fv(batchRenderer.shader_locations["view"], 1, GL_FALSE, final)
     glUniformMatrix4fv(batchRenderer.shader_locations["projection"], 1, GL_FALSE, batchRenderer.projection_matrix)
     

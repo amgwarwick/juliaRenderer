@@ -5,8 +5,7 @@ in float left;
 in float right;
 in vec3 Normal;
 in vec3 FragPos;
-in vec2 texCoords;
-in float texID;
+in vec3 texCoords;
 in float n_env_frag;
 in float res_frag;
 
@@ -23,13 +22,10 @@ uniform int directional;     // 1 for directional light, 0 for point/spotlight
 uniform vec3 attenuation;    // Attenuation factors (constant, linear, quadratic)
 uniform vec3 viewPos;
 uniform vec3 headlightDir;
-
-uniform sampler2D tex0;
-uniform sampler2D tex1;
-uniform sampler2D tex2;
+uniform sampler2DArray texArray;
 
 void main()
-{   
+{
 
     float leftBound = (left + 1)/2 *(n_env_frag*res_frag);
     float rightBound = (right + 1)/2 *(n_env_frag*res_frag);
@@ -62,8 +58,6 @@ void main()
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), exponent);
         vec3 specularApplied = spec * specular * vColor.rgb * attenuationFactor;
         result += specularApplied;
-
-
     }
     else
     {
@@ -103,18 +97,9 @@ void main()
     vec3 hSpecularApplied = spec * specularHeadlight * vColor.rgb;
     result += hSpecularApplied;
     
-    FragColor = vec4(result, vColor.a);
-    
-    int tex_id = int(texID);
-
-    if (tex_id == 1) {
-        FragColor = texture(tex0, texCoords) * vec4(result, vColor.a);
-    } else if (tex_id == 2) {
-        FragColor = texture(tex1, texCoords) * vec4(result, vColor.a);
-    } else if (tex_id == 3) {
-        FragColor = texture(tex2, texCoords) * vec4(result, vColor.a);
-    } else {
+    if (texCoords.z < 0.0) {
         FragColor = vec4(result, vColor.a);
+    } else {
+        FragColor = texture(texArray, texCoords);// * vec4(result, vColor.a);
     }
-    
 }

@@ -15,3 +15,10 @@ image_data = juliaRenderer.render!(batchRenderer, datas)
 float_image_data = convert(Array{Float32, 3}, image_data) / 255.0
 img = collect(Images.colorview(Images.RGB, float_image_data)')
 Images.save("example_render.png", img)
+
+function render100(batchRenderer, datas)
+    for i=1:100
+        image_data = juliaRenderer.render(batchRenderer, datas)
+    end
+    return nothing
+end

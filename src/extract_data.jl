@@ -27,6 +27,8 @@ function extract_geom_data!(batchRenderer, datas)
     geom_types = model.geom_type
     geom_sizes = model.geom_size
     geom_rgbas = model.geom_rgba
+    geom_mater = model.geom_matid
+
     @Threads.threads for j in 1:n_env
         counters = Dict(geom_id => 0 for geom_id in keys(batchRenderer.instance_data))
         geom_xpos  = datas[j].geom_xpos
@@ -42,12 +44,9 @@ function extract_geom_data!(batchRenderer, datas)
 
             offset::Int32 = j - 1
 
-            #tex_id = Float32(geom.texid)
-            #if tex_id != -1
-                #tex_id = get(geomTexID_to_openglTexID, tex_id, -1)
-                #tex_id = Float32(-1)
-            #end
-            tex_id::Int32 = -1
+            #Texture ID
+            material_id = geom_mater[i]
+            tex_id = material_id != -1 ? model.mat_texid[material_id+1] : -1
 
             # Initialize the geomsize array
             geomsize = SVector{3, Float32}(view(geom_sizes, i, :))
